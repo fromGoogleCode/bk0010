@@ -19,6 +19,7 @@ module bk0010(
 		clk50,
 		clk25,
 		reset_in,
+		hypercharge_i,
 		PS2_Clk, PS2_Data,
 		button0,
 		pdb,
@@ -83,6 +84,8 @@ input				tape_in;
 
 input 				reset_in;
 
+input               hypercharge_i;
+
 output 	reg			RED,GREEN,BLUE;
 output				vs,hs;
 
@@ -138,7 +141,7 @@ wire 			cpu_byte;
 wire 			enable_bpts;        // 1 == hw breakpoints are enabled
 wire 			cpu_pause_n;        // switch-controlled CPU pause (SW7)
 wire 			clk_cpu;            // 25 MHz clock
-wire            ce_cpu;             // CPU clock enable 
+reg             ce_cpu;             // CPU clock enable 
 wire            ce_shifter_load;    // latch data into pixel shifter
 reg [4:0] 		clk_cpu_count;
 wire 			cpu_oe_n;           // 0= ram data output to cpu
@@ -156,7 +159,24 @@ reg [1:0] 		one_shot;
 assign      enable_bpts = switch[6];
 assign      cpu_pause_n = switch[7];
 
-assign      ce_cpu    = cpu_pause_n && (screen_x[3:0] == 3'b0100 || screen_x[3:0] == 3'b0101);
+//assign      ce_cpu    = cpu_pause_n && (screen_x[3:0] == 4'b0100 || screen_x[3:0] == 4'b0101 || screen_x[3:0] == 4'b1000 || screen_x[3:0] == 4'b1001);
+//assign      ce_cpu    = cpu_pause_n && 
+//        (screen_x[3:0] == 4'b0100 || screen_x[3:0] == 4'b0101 || 
+//         screen_x[3:0] == 4'b1000 || screen_x[3:0] == 4'b1001 ||
+//         screen_x[3:0] == 4'b1100 || screen_x[3:0] == 4'b1101);
+always @*
+    case({hypercharge_i,cpu_pause_n,screen_x[3:0]}) 
+    6'b110100,
+    6'b110101,
+    6'b111000,
+    6'b111001,
+    6'b111100,
+    6'b111101:   ce_cpu <= 1;
+    6'b010100,
+    6'b010101:   ce_cpu <= 1;
+    default:    ce_cpu <= 0;
+    endcase
+
 assign      clk_cpu   = clk25;
 
 assign      ce_shifter_load = screen_x[3:0] == 4'b0000;

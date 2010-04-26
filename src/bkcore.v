@@ -223,6 +223,8 @@ assign _cpu_error = bad_addr | (ifetch & stopkey);
    
 reg stopkey_latch;
 
+reg initreg_access_latch;
+
 always @(posedge p_reset) begin
 	init_reg_hi  <= 8'b10000000; // CPU start address MSB, not used by POP-11
 end
@@ -234,6 +236,7 @@ always @(posedge m_clock) begin
 	   kbd_int_flag <= 1'b0;
 	   bad_addr <= 1'b0;
 	   roll <= 'o01330;
+	   initreg_access_latch <= 0;
 	end
 	else if (ce) begin
 		if (stopkey) stopkey_latch <= 1'b1;
@@ -248,21 +251,27 @@ always @(posedge m_clock) begin
 						kbd_int_flag <= _cpu_dato[6];
 					if(roll_sel)
 						roll <= _cpu_dato;
-					if (initreg_sel)
+					if (initreg_sel) begin
 						tape_out <= _cpu_dato[6];
+						initreg_access_latch <= 1'b1;
+				    end
 				end
 				
 				if(_cpu_rd) begin
 					if(kbd_data_sel) begin
-						_cpu_dati = {8'b0000000, kbd_data};
+						_cpu_dati <= {8'b0000000, kbd_data};
 					end
-					else if(kbd_state_sel)
-						_cpu_dati = {8'b0000000, kbd_available, kbd_int_flag,6'b000000};
-					else if(initreg_sel  ) begin
-						_cpu_dati = {init_reg_hi, 1'b1, ~keydown, tape_in, 1'b1, 1'b1, stopkey_latch, 1'b0,1'b0};
+					else if(kbd_state_sel) begin
+						_cpu_dati <= {8'b0000000, kbd_available, kbd_int_flag,6'b000000};
+					end else if(initreg_sel  ) begin
+						_cpu_dati <= {init_reg_hi, 1'b1, ~keydown, tape_in, 1'b0, 1'b0, stopkey_latch|initreg_access_latch, 1'b0,1'b0};
 						stopkey_latch <= 1'b0;
-					end else if(roll_sel )
-						_cpu_dati = roll;
+						initreg_access_latch <= 1'b0;
+					end else if(roll_sel ) begin
+						_cpu_dati <= roll;
+					end else if (usr_sel) begin
+                        _cpu_dati <= 16'o0;     // this could be a joystick...
+                    end
 				end // rd
 
 			end // good access to reg space

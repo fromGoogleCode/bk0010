@@ -181,6 +181,8 @@ wire [15:0] cpu_addr;
 
 wire ifetch;
 
+reg     hypercharge;
+
 bk0010 elektronika(
 		.clk50(clk50),
 		.clk25(clk25),
@@ -221,6 +223,7 @@ bk0010 elektronika(
 		.cpu_sp(cpu_sp),
 		.redleds(LEDr[7:0]),
 		.ram_out_data(ram_out_data),
+		.hypercharge_i(hypercharge),
 		);
 		
 reg  [15:0] cpu_addr_reg;
@@ -240,5 +243,24 @@ always @(posedge clk25) begin
 	if (ifetch) cpu_addr_reg <= cpu_addr;
 end
 
+reg [15:0] debctr;
+reg        debsamp;
+always @(posedge clk25) begin
+    if (RST_IN) begin
+        hypercharge <= 0;
+        debsamp <= 0;
+    end else begin
+        if (~KEY[3])    
+            debctr <= 16'hffff;
+        else
+            if (|debctr)    debctr <= debctr - 1;
+        
+        debsamp <= |debctr;
+        
+        if (~debsamp && |debctr)    hypercharge <= ~hypercharge;
+    end
+end
+
+assign LEDr[9] = hypercharge;
 
 endmodule
