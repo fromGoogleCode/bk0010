@@ -1,4 +1,5 @@
 `define NOSLOWRPLY
+`define VM1TESTS
 
 module simme;
 
@@ -52,7 +53,7 @@ integer    disp, fp, memf, error, i;
     end
   
     $write("100000: ");
-    memf = $fopen("asmtests/felix6.pdp", "rb");
+    memf = $fopen("asmtests/test1.pdp", "rb");
     error = 1;
     for (i = 0; error == 1; i = i + 1) begin
         error = $fread(tmpbyte, memf);
@@ -75,7 +76,7 @@ integer    disp, fp, memf, error, i;
         ram1[i][15:8] = tmpbyte;
     end
     $fclose(memf);
-
+`else
     $write("initialized ram 000000 with %d words\n000200: ", i);
     for (i = 'o100; i < 'o100+4; i = i + 1) $write("%o ", ram1[i]);
     $display();
