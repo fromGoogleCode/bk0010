@@ -144,8 +144,8 @@ wire 			clk_cpu;            // 25 MHz clock
 reg             ce_cpu;             // CPU clock enable 
 wire            ce_shifter_load;    // latch data into pixel shifter
 reg [4:0] 		clk_cpu_count;
-wire 			cpu_oe_n;           // 0= ram data output to cpu
-wire 			cpu_we_n;           // 0= cpu outputs data to ram
+reg             cpu_oe_n;           // 0= ram data output to cpu
+reg             cpu_we_n;           // 0= cpu outputs data to ram
 wire 			read_kbd;
 
 wire [7:0] 		roll;
@@ -179,7 +179,8 @@ always @*
     //6'b11xxxx:  ce_cpu <= |screen_x[3:0] && screen_x[3:0] != 4'b1111 && screen_x[3:0] != 4'b1110;
     6'b010101:  ce_cpu <= 1;
 `else
-    6'b11xxxx:  ce_cpu <= screen_x[3:0] != 4'b1111; // @50MHz this leaves enough cycles for the last CPU access to complete, so no 1110
+                                                // vvv not sure about this!
+    6'b11xxxx:  ce_cpu <= screen_x[3:0] != 4'b1111 && screen_x[3:0] != 4'b1110; // @50MHz this leaves enough cycles for the last CPU access to complete, so no 1110
     6'b010101:  ce_cpu <= cediv50;
 `endif    
     default:    ce_cpu <= 0;
@@ -339,53 +340,32 @@ wire kbd_ar2;
 `endif    
 
 
-// SEQ is here
-reg [2:0] 		seq;
-reg             rdsamp;
-reg             wtsamp;
-always @(posedge clk_cpu) begin
-	if(reset_in) begin
-		clk_cpu_count <= 0;
-		seq <= 0;
-		{rdsamp,wtsamp} <= 0;
-	end
-	else begin
-		clk_cpu_count <= clk_cpu_count + 1;
-		rdsamp <= cpu_rd;
-		wtsamp <= cpu_wt;
-		seq <= {seq[1:0], (~rdsamp & cpu_rd) | (~wtsamp & cpu_wt) };
-	end
-end  
-
-assign cpu_oe_n = ~(cpu_rd & (seq[1:0] == 2'b01));
- 
-assign cpu_we_n = ~(cpu_wt & (seq[1:0] == 2'b01) ); 
+// New RAM exchange cycle that takes place of the old SEQ
 
 reg ram_reply;
 
-// negedge is faster because it saves a trailing clock in many CPU states,
-// but it wouldn't work if the core clock is 50MHz
-`ifdef CORE_25MHZ    
-always @(negedge clk_cpu) begin
-`else
-always @(posedge clk_cpu) begin
-`endif
+always @(posedge clk_cpu or posedge reset_in) begin: _ramcycle
     if (reset_in) begin
-        ram_reply <= 1'b0;
-    end
-    else if(~cpu_oe_n) begin
-        latched_ram_data <= ram_a_data;
-        // generate reply for the cpu
-        ram_reply <= 1'b1;
-    end 
-    else if (~cpu_we_n) begin
-        ram_reply <= 1'b1;
-    end
-    else if (ram_reply && ~(cpu_rd|cpu_wt)) begin
-        // cycle ended, remove reply
-        ram_reply <= 1'b0;
+        {cpu_oe_n,cpu_we_n} <= 2'b11;
+        ram_reply <= 0;
+    end else begin
+        if (ce_cpu) begin
+            ram_reply <= 0;
+            cpu_oe_n <= (~cpu_rd) | ram_reply | ~cpu_oe_n;  
+            cpu_we_n <= (~cpu_wt) | ram_reply | ~cpu_we_n;
+        end else begin
+            {cpu_oe_n,cpu_we_n} <= 2'b11;
+        end
+        
+        if (~cpu_oe_n) begin
+            latched_ram_data <= ram_a_data;
+            ram_reply <= 1;
+        end else if (~cpu_we_n) begin
+            ram_reply <= 1;
+        end 
     end
 end
+
 
 always data_from_cpu <= cpu_out;
 
