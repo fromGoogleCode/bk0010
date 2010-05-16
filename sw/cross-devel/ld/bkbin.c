@@ -23,9 +23,12 @@
 #include "a.out.h"
 
 const char binsuffix[] = ".bin";
+const char baresuffix[]= ".bxx";
+
 char	tname[] = "/tmp/sXXXXXX";
 int	tf;
 short   baseaddr = 01000;
+short   bare = 0;
 
 /*
  * Read a.out header. Return 0 on error.
@@ -66,13 +69,15 @@ writehdr(fd, hdr)
     unsigned short size;
 	unsigned char buf [4];
 
-    size = hdr->a_text + hdr->a_data;
+    if (!bare) {
+        size = hdr->a_text + hdr->a_data;
 
-    buf[0] = (hdr->a_entry + baseaddr);
-    buf[1] = (hdr->a_entry + baseaddr) >> 8;
-    buf[2] = size;
-    buf[3] = size >> 8;
-	write(fd, buf, 4);
+        buf[0] = (hdr->a_entry + baseaddr);
+        buf[1] = (hdr->a_entry + baseaddr) >> 8;
+        buf[2] = size;
+        buf[3] = size >> 8;
+	    write(fd, buf, 4);
+    }
 }
 
 int
@@ -109,7 +114,7 @@ int mkbinfile(name)
     int i;
     char *buf = (char *) malloc(strlen(name)+5);
     char *binname = buf;
-    const char *psuffix = &binsuffix[0];
+    const char *psuffix = bare ? baresuffix : binsuffix;
 
     for (; *buf++ = *name ? *name++ : *psuffix++;);
 
@@ -152,7 +157,7 @@ strip(name)
 		status = 1;
 		goto out;
 	}
-	size += 4; // bin header- sizeof(head);
+	size += bare ? 0 : 4; // bin header- sizeof(head);
 	close(f);
 	f = mkbinfile(name);
 	if (f < 0) {
@@ -200,6 +205,9 @@ main(argc, argv)
                             baseaddr += cp[1] - '0';
                             ++cp;
                         }
+                        break;
+                case 'b':   /* -b bare file, no header */
+                        bare = 1;
                         break;
                 }
             }
