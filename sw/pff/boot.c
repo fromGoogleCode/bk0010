@@ -71,9 +71,10 @@ int main ()
     debug("read "); printhex(count); debug("\n");
 #endif
 
-/*    asm("mov $0100000, *$0177716 / disable shadow"); */
+    /*
     asm("mov $0, *$0177700 / disable shadow");
     asm("jmp *$0100000");
+    */
 
 	return 0;
 }

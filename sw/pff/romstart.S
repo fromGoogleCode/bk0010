@@ -17,11 +17,26 @@
 	.globl	_main
 	.data
 
+    KISA = 0177600
+    MMUCTL = 0177700
+
 /-----------------------
 / System starts here.
 /
 	.text
 init:
+    / init ram map: linear, all writable (bit 15 set)
+    mov $0100000, r0
+    mov $KISA, r1
+9:
+    mov r0, (r1)+
+    add $0200, r0
+    bit $02000, r0
+    beq 9b
+
+    / enable mapping
+    / bis $2, *$MMUCTL  
+
     / copy self to ram area at 01000
     mov $0100000, r0
     mov $01000, r1
@@ -36,5 +51,15 @@ init:
 
 	mov	r0,sp			/ set up stack pointer
 
-    mov $_main, r0
-    jmp (r0)
+    / call main and make it return into 01000-space
+    mov $Lret, r0
+    jsr r0, *$_main
+
+Lret:
+    / this will execute in 01000-space after return from main
+    / disable shadow 
+    bic $1, *$MMUCTL
+    / enable mapping
+    bis $2, *$MMUCTL
+    / boot bios
+    jmp *$0100000
