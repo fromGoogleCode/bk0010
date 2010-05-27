@@ -91,6 +91,7 @@ wire    [15:0]  kbd_int_vector = kbd_ar2 ? 'o0274: 'o060;
 
 wire    [15:0]  data_to_cpu = (_cpu_int_ack) ? kbd_int_vector : databus_in;
 
+
 wire     [7:0]  test_control, test_bus;
 
 // switch [3:2]
@@ -116,7 +117,7 @@ vm1 cpu(.clk(clk),
         .error_i(_cpu_error),      
         .RPLY(reply_i | reg_reply),
         
-        .usermode_i(cpumode_req),
+        .usermode_i(cpumode_req_acked),
         .psw(cpu_psw),
 
         .DIN(_cpu_rd),          // o: data in
@@ -228,7 +229,9 @@ end
 
 assign _cpu_irq_in = kbd_available & ~kbdint_enable_n;
 
-//assign spi_wren = ce & _cpu_wt & reg_space & regsel[USRREG];
+// superkey: resets to 0, but only when IAKO
+wire cpumode_req_acked = superkey ? ~_cpu_int_ack : cpumode_req;
+
 
 always @(posedge clk or negedge reset_n) begin
     if(~reset_n) begin
@@ -247,7 +250,7 @@ always @(posedge clk or negedge reset_n) begin
             
             if (stopkey) stopkey_latch <= 1'b1;
             
-            if (superkey) cpumode_req <= 1'b0; // superkey sends cpu into kernel mode
+            if (superkey & _cpu_int_ack) cpumode_req <= 1'b0; // latch kernel mode
             
             if (reg_space) begin
                 if(bad_reg)
