@@ -100,7 +100,7 @@ always @* case (1'b1) // synopsys parallel_case
     ctrl[`DSTALU1]:     ALU1 <= DST;
     ctrl[`SRCALU1]:     ALU1 <= SRC;
     ctrl[`SELALU1]:     ALU1 <= REGsel;
-    ctrl[`PSWALU1]:     ALU1 <= psw;
+    ctrl[`PSWALU1]:     ALU1 <= {8'b0,psw[7:0]}; // don't expose usermode to BK software
     default:            ALU1 <= 16'b0; 
     endcase
 
@@ -224,7 +224,7 @@ always @(posedge clk or negedge reset_n)
         
         if (ctrl[`SAVE_STAT]) begin
                 ADR <= PC;
-                DST <= psw;
+                DST <= {8'b0,psw[7:0]}; // don't expose usermode to BK software
             end
             
         case (1'b1) // synopsis parallel_case

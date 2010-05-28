@@ -297,7 +297,7 @@ always @* begin: _databus_selector
             regsel[KBD_STATE]:  databus_in = {8'b0000000, kbd_available, kbdint_enable_n, 6'b000000};
             regsel[INITREG]:    databus_in = {init_reg_hi, 1'b1, ~keydown, tape_in, 1'b0, 1'b0, stopkey_latch|initreg_access_latch, 1'b0,1'b0};
             regsel[ROLL]:       databus_in = roll;
-            regsel[USRREG]:     databus_in = {~spi_dsr, spi_di}; //16'o0;     // this could be a joystick...
+            regsel[USRREG]:     databus_in = cpu_mode ? 16'o0 : {~spi_dsr, spi_di};      // this could be a joystick...
             regsel[MMUREGS]:    databus_in = data_from_mmu;
             regsel[MMUCTRL]:    databus_in = {cpu_mode,cpumode_req,mmu_enabled,shadowmode};
         endcase
