@@ -36,6 +36,8 @@ struct binhdr {
 #define debug(x)    {}
 #endif
 
+void newline() { putchar('\n'); }
+
 /**
  * Bootstrap Phase 1. Mount FS, find ROM and open it.
  */
@@ -80,7 +82,10 @@ int loadbin() {
     if (n) {
         if (pf_read(&hdr, sizeof(hdr), &n) == FR_OK) {
             if (pf_read( (unsigned char *) hdr.start + 0120000, hdr.length, &n) == FR_OK) {
-                return 1;
+                if (hdr.length + hdr.start > 16384)
+                    return 2;
+                else
+                    return 1;
             }
         }
     }
@@ -102,34 +107,43 @@ int listdir() {
         for(i = 0; pf_rddir(&dir, &fno) == FR_OK;) {
             if (!fno.fname[0]) break;
             if (strprefx(fname+7, fno.fname)) {
-                pputs(fno.fname, 16);
+                if (i == 1) {
+                    newline();
+                    pputs(lastfile, 16);
+                }
+                if (i != 0) pputs(fno.fname, 16);
                 strcpy(lastfile, fno.fname);
                 i++;
             }
         }
         if (i == 1) {
             strcpy(fname+7, lastfile);
+        } else if (i > 1) {
+            newline();
         }
+
         return 0;
     } 
 
     return -1;
 }
 
+
 /** 
  * ScrollLock entry point.
  * Prompt for file name, list directory and load bin file.
  */
-void kenter() {
+int kenter() {
     int c;
     int i;
 
     fname[7] = 0;
 
+    newline();
     for(;;) {
         for (i = 7; fname[i]; i++);
 
-        puts("\nFile:"); puts(fname+7);
+        puts("\025\032File:"); puts(fname+7);
         for (; i < FNBUFL && ((c = toupper(getchar())) != '\n'); ) {
             if (c == 030) {             /* Backspace/DEL */
                 if (i > 7) { 
@@ -148,14 +162,14 @@ void kenter() {
         fname[i] = '\0';
 
         if (i == 7 || c == 011) {
-            putchar('\n');
             if(listdir()) puts(M_FAIL);
         } else {
             puts("\nLoading "); puts(fname); puts("...");
-            puts(loadbin() ? M_OK : M_FAIL);
-            break;
+            puts((c = loadbin()) ? M_OK : M_FAIL);
+            newline();
+            return c == 2;
         }
     }
-
-    putchar('\n');
+    newline();
+    return 0;
 }

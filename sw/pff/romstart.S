@@ -159,8 +159,6 @@ _abort:
     jmp _restore
 
 _kkirq:
-    com *$040000            / cue on
-
     mov r0,-(sp)
     mov r1,-(sp)
     mov r2,-(sp)
@@ -169,12 +167,15 @@ _kkirq:
     mov r5,-(sp)
     mov sp, *$_spsave
 
+    mov *$0177662, r0                / clear keyboard ready bit
+
     jsr pc, _scrprep                / backup screen contents
 
     / copy userspace interrupt vectors to kernelspace
     
     mov $0100000, *$KISA+10         / map userspace 0000000 to 0120000, RW
     mov $0100200, *$KISA+12         / map userspace 0020000 to 0140000, RW
+    mov $0100400, *$KISA+14         / map userspace 0040000 to 0160000, RW (for large bin files)
     
     mov $0120400, r0                / copy vectors that are now in 0120000-0120400...
     mov $0400, r1                   / ...to 0000-0400
@@ -183,11 +184,6 @@ _kkirq:
     tst r1
     bne 3b
     
-    / print SP
-    / mov sp, -(sp)
-    / jsr pc, _printhex
-    / mov (sp)+, r0
-
     jsr pc, _vinst2                 / install abort handlers
     
     mtps $0                         / enable interrupts
@@ -195,10 +191,16 @@ _kkirq:
     / ready to use bios in kernel mode
 
     jsr pc, _kenter
+    
+    / test if loaded image used screen area
+    / and don't restore display if it did
+    tst r0
+    bne _noclr
 
 _restore:
     jsr pc, _pause          / pause before restoring..
     jsr pc, _scrrest        / restore original display
+_noclr:
     jsr pc, _vinst          / reinstall the initial hook
 
     mov (sp)+,r5
@@ -208,8 +210,6 @@ _restore:
     mov (sp)+,r1
     mov (sp)+,r0
 
-    com *$040000            / cue off
-    
     bis $4, *$MMUCTL        / kate, we have to go back!
     rti
 
