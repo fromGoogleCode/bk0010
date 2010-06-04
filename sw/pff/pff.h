@@ -233,16 +233,7 @@ FRESULT pf_rddir PARAMS((DIR*, FILINFO*));			/* Read a directory item from the o
 #define	ST_DWORD(ptr,val)	*(DWORD*)(BYTE*)(ptr)=(DWORD)(val)
 #else					/* Use byte-by-byte access to the FAT structure */
 
-#ifdef SANE_COMPILER
-#define	LD_WORD(ptr)		(WORD)(( (WORD) *(BYTE*)((ptr)+1)<<8) |(WORD)*(BYTE*)(ptr)) 
-#define	LD_DWORD(ptr)		(DWORD)( (*(((BYTE*)ptr)+3)<<24) | (*(((BYTE*)ptr)+2)<<16) | (*(((BYTE*)ptr)+1)<<8) | *((BYTE*)ptr) )
-#else
-#define	LD_WORD(ptr)		(WORD)( (*(((BYTE*)(ptr))+1)<<8) | (*((BYTE*)(ptr))) )
-
-#define	LD_DWORD(ptr)		(DWORD)((((DWORD)LD_WORD(ptr+2))<<16) | LD_WORD(ptr))
-
-/*#define	LD_DWORD(ptr)		(DWORD)(((DWORD)*(BYTE*)((ptr)+3)<<24)|((DWORD)*(BYTE*)((ptr)+2)<<16)|((WORD)*(BYTE*)((ptr)+1)<<8)|*(BYTE*)(ptr))*/
-#endif
+/* LD_WORD, LD_DWORD Converted into functions in pff.c to save memory */
 
 #define	ST_WORD(ptr,val)	*(BYTE*)(ptr)=(BYTE)(val); *(BYTE*)((ptr)+1)=(BYTE)((WORD)(val)>>8)
 

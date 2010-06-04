@@ -33,6 +33,18 @@ static
 FATFS *FatFs;	/* Pointer to the file system object (logical drive) */
 
 
+WORD LD_WORD(ptr) 
+BYTE *ptr;
+{
+    return (ptr[1]<<8) | ptr[0];
+}
+
+void LD_DWORD(ptr,dwptr)
+BYTE* ptr;
+DWORD* dwptr;
+{
+   *dwptr = (DWORD)((((DWORD)LD_WORD(ptr+2))<<16) | LD_WORD(ptr));
+}
 
 /*-----------------------------------------------------------------------*/
 /* String functions                                                      */
@@ -375,7 +387,7 @@ FILINFO *fno;
 			}
 		}
 		fno->fattrib = dir[DIR_Attr];				/* Attribute */
-		fno->fsize = LD_DWORD(dir+DIR_FileSize);	/* Size */
+        LD_DWORD(dir+DIR_FileSize, &fno->fsize);
 		fno->fdate = LD_WORD(dir+DIR_WrtDate);		/* Date */
 		fno->ftime = LD_WORD(dir+DIR_WrtTime);		/* Time */
 	}
@@ -502,7 +514,7 @@ FATFS *fs;
 			fmt = 3;
 		} else {
 			if (buf[4]) {					/* Is the partition existing? */
-				bsect = LD_DWORD(&buf[8]);	/* Partition offset in LBA */
+                LD_DWORD(&buf[8], &bsect);	/* Partition offset in LBA */
 				fmt = check_fs(buf, (DWORD)bsect);	/* Check the partition */
 			}
 		}
@@ -514,7 +526,7 @@ FATFS *fs;
 	if (disk_readp(buf, (DWORD)bsect, 13, sizeof(buf))) return FR_DISK_ERR;
 
 	fsize = LD_WORD(buf+BPB_FATSz16-13);				/* Number of sectors per FAT */
-	if (!fsize) fsize = LD_DWORD(buf+BPB_FATSz32-13);
+	if (fsize == 0L) LD_DWORD(buf+BPB_FATSz32-13, &fsize);
 
 #if SANE_COMPILER
 	fsize *= buf[BPB_NumFATs-13];						/* Number of sectors in FAT area */
@@ -526,7 +538,7 @@ FATFS *fs;
 	fs->csize = buf[BPB_SecPerClus-13];					/* Number of sectors per cluster */
 	fs->n_rootdir = LD_WORD(buf+BPB_RootEntCnt-13);		/* Nmuber of root directory entries */
 	tsect = LD_WORD(buf+BPB_TotSec16-13);				/* Number of sectors on the file system */
-	if (!tsect) tsect = LD_DWORD(buf+BPB_TotSec32-13);
+	if (!tsect) LD_DWORD(buf+BPB_TotSec32-13, &tsect);
 	mclst = (tsect						/* Last cluster# + 1 */
 		- LD_WORD(buf+BPB_RsvdSecCnt-13) - fsize - fs->n_rootdir / 16
 		) / fs->csize + 2;
@@ -591,7 +603,7 @@ const char *path;
 		((DWORD)LD_WORD(dir+DIR_FstClusHI) << 16) |
 #endif
 		LD_WORD(dir+DIR_FstClusLO);
-	fs->fsize = LD_DWORD(dir+DIR_FileSize);	/* File size */
+	LD_DWORD(dir+DIR_FileSize, &fs->fsize);	/* File size */
 	fs->fptr = 0;						/* File pointer */
 	fs->flag = FA_OPENED;
 
