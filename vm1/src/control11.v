@@ -726,6 +726,62 @@ always @* begin
                                   `dp(`ALUCC);
                                   next = WB_0;
                                   end
+                    idcop[`dmfpi]:begin 
+                                  // move from previous instruction space
+                                  case (state)
+                                  EX_0: begin
+                                        // fetch source
+                                        `dp(`MODESWAP);
+                                        next = EX_1;
+                                        end
+                                  EX_1: begin
+                                            mbyte = 1'b0;
+                                            if (dp_opcode[5:3] != 0) begin
+                                                `dp(`DBADST); // was DBAADR
+                                                // move from previous memory
+                                                if (ierror) begin
+                                                    `dp(`BUSERR);
+                                                    `dp(`MODESWAP);
+                                                    next = TRAP_SVC;
+                                                 end else if (di_ready) begin
+                                                    `dp(`MODESWAP);
+                                                    `dp(`DBIDST);
+                                                    next = EX_2;
+                                                 end else begin
+                                                    datain(di_com);
+                                                 end
+                                            end
+                                            else begin
+                                                // move from previous register
+                                                `dp(`MODESWAP); // will switch on clk, so move from uSP will work
+                                                `dp(`REGSEL);
+                                                `dp(`SELDST);
+                                                next = EX_2;
+                                            end
+                                        end
+                                  EX_2: begin
+                                            // back in kernel mode: mov dst, -(sp)
+                                            `dp(`SPALU1); `dp(`DEC2); `dp(`ALUSP);
+                                            next = EX_3;
+                                        end
+                                  EX_3: begin
+                                            mbyte = 1'b0;
+                                            if (ierror) begin
+                                                `dp(`BUSERR);
+                                                next = TRAP_SVC;
+                                            end 
+                                            else if (do_ready) begin
+                                                `dp(`SRCALU1); `dp(`ALUCC);
+                                                next = FS_IF0;
+                                            end else begin
+                                                dataout(do_com);
+                                                `dp(`DBODST); `dp(`DBASP);
+                                            end
+                                        end
+                                  endcase
+                                  end
+                    idcop[`dmtpi]:begin
+                                  end
                     endcase // idcop
                 end // EX_*
                 

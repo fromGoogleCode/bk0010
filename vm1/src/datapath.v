@@ -58,13 +58,14 @@ reg  [15:0] ALU1, ALU2;
 reg  [15:0] REGsel;
 
 reg         usermode;
+reg         prevmode;
 reg  [2:0]  prio;
 reg         trapbit;
 reg         fn, fz, fv, fc;
 
 assign  opcode = {OPC_BYTE,OPC};
 
-assign  psw = {usermode,usermode,6'b000000,prio,trapbit,fn,fz,fv,fc};
+assign  psw = {{2{usermode}},{2{prevmode}},4'b0000,prio,trapbit,fn,fz,fv,fc};
 
 
 reg taken; // latch
@@ -253,10 +254,19 @@ always @(posedge clk or negedge reset_n)
 always @(posedge clk or negedge reset_n) begin
     if (~reset_n) begin
         usermode <= 0;
+        prevmode <= 0;
     end else if (ce) begin
         case (1'b1)
-        ctrl[`MODEIN]:
+        ctrl[`MODEIN]: 
+            begin
             usermode <= usermode_i;
+            prevmode <= usermode_i != usermode ? usermode : prevmode;
+            end
+        ctrl[`MODESWAP]: 
+            begin
+            usermode <= prevmode;
+            prevmode <= usermode;
+            end
         endcase
     end
 end

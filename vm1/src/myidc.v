@@ -103,7 +103,7 @@ module idc (
    assign   dop = ((double_op == 3'b000) & ~(nof|bra|cco))  
         | djmp | djsr | drts
         | dclr |  dcom | dinc | ddec | dneg | dadc | dsbc | dtst |  dror
-        | drol | dasr |  dasl | dmfpi; // svo: why MFPI is a dop?
+        | drol | dasr |  dasl | dmfpi | dmtpi;
       
         
    assign   nof = unused | drtt | dreset | diot | dbpt | drti | diwait | dhalt | 
